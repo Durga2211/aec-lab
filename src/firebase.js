@@ -1,6 +1,7 @@
 // Import the functions you need
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
 
 // Your Firebase configuration
 const firebaseConfig = {
@@ -21,3 +22,6 @@ export const auth = getAuth(app);
 
 // Google provider
 export const googleProvider = new GoogleAuthProvider();
+
+// Firestore instance (exported for optional persistent storage)
+export const db = getFirestore(app);
