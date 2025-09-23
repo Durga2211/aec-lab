@@ -2,16 +2,13 @@
 
 import { useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
-import { auth } from '../firebase.js'
+import { auth, db } from '../firebase.js'
 import { onAuthStateChanged } from 'firebase/auth'
-import NotificationIcon from '../components/NotificationIcon.jsx'
-import { addNotificationRequest } from '../data/notifications.js'
 
 export default function Hello() {
   const location = useLocation()
   const [user, setUser] = useState(null)
   const [dashMsg, setDashMsg] = useState(null)
-  const [requestDesc, setRequestDesc] = useState('Request to submit incomplete experiment - lab slot needed')
 
   // Prefer Firebase user; fall back to value passed during navigate
   const fallbackName = location.state?.usn || ''
@@ -21,10 +18,21 @@ export default function Hello() {
     return () => unsub()
   }, [])
 
-  // Mock data for dashboard widgets
-  const labsTotal = 5
-  const labsAvailable = 2 // change to 0 to see the request button enabled
-  const kitsAvailable = 24
+  // Subscribe to Firestore for real-time availability of selected slot
+  useEffect(() => {
+    const id = `${day}_${slot}`
+    const ref = doc(db, 'labSlots', id)
+    const unsub = onSnapshot(ref, (snap) => {
+      const data = snap.exists() ? snap.data() : null
+      const isAvailable = Boolean(data?.available)
+      setLabsAvailable(isAvailable ? 1 : 0)
+    }, (err) => {
+      console.error(err)
+      setDashMsg({ type: 'info', text: 'Unable to load live availability. Retrying…' })
+    })
+    return () => unsub()
+  }, [day, slot])
+
   const labsEmpty = labsAvailable === 0
 
   function handleRequestSlot() {
@@ -64,8 +72,28 @@ export default function Hello() {
           </div>
         </div>
 
-        {/* Dashboard widgets */}
+        {/* Slot selectors */}
         <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div className="rounded-xl border border-neutral-800 bg-neutral-900/60 p-5">
+            <label className="mb-2 block text-xs uppercase tracking-wide text-neutral-400">Day</label>
+            <select value={day} onChange={(e) => setDay(e.target.value)} className="w-full rounded-md border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm focus:border-primary-600">
+              {DAYS.map((d) => (
+                <option key={d} value={d}>{d}</option>
+              ))}
+            </select>
+          </div>
+          <div className="rounded-xl border border-neutral-800 bg-neutral-900/60 p-5">
+            <label className="mb-2 block text-xs uppercase tracking-wide text-neutral-400">Time Slot</label>
+            <select value={slot} onChange={(e) => setSlot(e.target.value)} className="w-full rounded-md border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm focus:border-primary-600">
+              {SLOTS.map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Dashboard widgets */}
+        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
           {/* Lab Availability */}
           <div className="rounded-xl border border-neutral-800 bg-neutral-900/60 p-5">
             <p className="text-xs uppercase tracking-wide text-neutral-400">Lab Availability</p>
